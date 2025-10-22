@@ -95,8 +95,7 @@ impl TonCell {
         self.meta.depth_for_level(self, level)
     }
 
-    #[cfg(test)]
-    pub(crate) fn underlying_storage(&self) -> &[u8] { &self.cell_data.data_storage }
+    pub fn underlying_storage(&self) -> &[u8] { &self.cell_data.data_storage }
 }
 
 pub(super) type RefStorage = SmallVec<[TonCell; TonCell::MAX_REFS_COUNT]>;
