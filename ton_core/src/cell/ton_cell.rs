@@ -134,6 +134,32 @@ impl TonCell {
     pub fn depth_for_level(&self, level: LevelMask) -> Result<u16, TonCoreError> {
         self.meta.depth_for_level(self, level)
     }
+    pub fn display_data(&self) -> String {
+        use std::fmt::Write;
+
+        let mut cell_data = vec![0; self.data_len_bits().div_ceil(8)];
+        BitsUtils::read_with_offset(
+            &self.cell_data.data_storage,
+            &mut cell_data,
+            self.borders.start_bit,
+            self.data_len_bits(),
+        );
+        // Generate the data display string
+        let mut data_display = cell_data.iter().fold(String::new(), |mut res, byte| {
+            let _ = write!(res, "{byte:02X}");
+            res
+        });
+        // completion tag
+        if self.data_len_bits() % 8 != 0 {
+            data_display.push('_');
+        }
+
+        if data_display.is_empty() {
+            data_display.push_str("");
+        };
+
+        data_display
+    }
 
     #[cfg(test)]
     pub(crate) fn underlying_storage(&self) -> &[u8] { &self.cell_data.data_storage }
@@ -188,28 +214,9 @@ mod traits_impl {
 }
 
 fn write_cell_display(f: &mut Formatter<'_>, cell: &TonCell, indent_level: usize) -> std::fmt::Result {
-    use std::fmt::Write;
     let indent = "    ".repeat(indent_level);
-    let mut cell_data = vec![0; cell.data_len_bits().div_ceil(8)];
-    BitsUtils::read_with_offset(
-        &cell.cell_data.data_storage,
-        &mut cell_data,
-        cell.borders.start_bit,
-        cell.data_len_bits(),
-    );
-    // Generate the data display string
-    let mut data_display = cell_data.iter().fold(String::new(), |mut res, byte| {
-        let _ = write!(res, "{byte:02X}");
-        res
-    });
-    // completion tag
-    if cell.data_len_bits() % 8 != 0 {
-        data_display.push('_');
-    }
 
-    if data_display.is_empty() {
-        data_display.push_str("");
-    };
+    let data_display = cell.display_data();
 
     if cell.refs().is_empty() {
         // Compact format for cells without references
