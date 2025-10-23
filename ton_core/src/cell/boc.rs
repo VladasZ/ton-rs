@@ -11,7 +11,7 @@ use base64::Engine;
 use std::sync::Arc;
 
 pub struct BoC {
-    roots: Vec<TonCell>,
+    pub roots: Vec<TonCell>,
 }
 
 impl BoC {
