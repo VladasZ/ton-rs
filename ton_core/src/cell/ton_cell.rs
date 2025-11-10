@@ -134,31 +134,48 @@ impl TonCell {
     pub fn depth_for_level(&self, level: LevelMask) -> Result<u16, TonCoreError> {
         self.meta.depth_for_level(self, level)
     }
-    pub fn display_data(&self) -> String {
-        use std::fmt::Write;
 
-        let mut cell_data = vec![0; self.data_len_bits().div_ceil(8)];
+    pub fn data(&self) -> Vec<u8> {
+        let mut data = vec![0; self.data_len_bits().div_ceil(8)];
         BitsUtils::read_with_offset(
             &self.cell_data.data_storage,
-            &mut cell_data,
+            &mut data,
             self.borders.start_bit,
             self.data_len_bits(),
         );
-        // Generate the data display string
-        let mut data_display = cell_data.iter().fold(String::new(), |mut res, byte| {
-            let _ = write!(res, "{byte:02X}");
-            res
-        });
-        // completion tag
-        if self.data_len_bits() % 8 != 0 {
-            data_display.push('_');
+
+        data
+    }
+
+    pub fn display_data(&self) -> String {
+        let mut cell_data = self.data();
+
+        let remainder = self.data_len_bits() % 8;
+
+        if remainder == 0 {
+            return to_hex(&cell_data);
         }
 
-        if data_display.is_empty() {
-            data_display.push_str("");
+        let Some(last_byte) = cell_data.last_mut() else {
+            return String::new()
         };
 
-        data_display
+        *last_byte |= 1 << (7 - remainder);
+
+
+        let mut result = to_hex(&cell_data);
+
+        if let Some(last) = result.chars().last() {
+            if last == '0' {
+                result.pop();
+            } if last == '8' {
+                result.pop();
+                return result;
+            }
+        };
+
+
+        format!("{result}_")
     }
 
     #[cfg(test)]
@@ -194,6 +211,16 @@ static EMPTY_CELL: LazyLock<TonCell> = LazyLock::new(|| TonCell {
     },
     meta: Arc::new(CellMeta::default()),
 });
+
+fn to_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        s.push(HEX[(b >> 4) as usize] as char);
+        s.push(HEX[(b & 0x0f) as usize] as char);
+    }
+    s
+}
 
 pub(super) type CellBytesReader<'a> = ByteReader<Cursor<&'a [u8]>, BigEndian>;
 pub(super) type CellBitsReader<'a> = BitReader<Cursor<&'a [u8]>, BigEndian>;
